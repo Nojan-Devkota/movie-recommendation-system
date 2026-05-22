@@ -1,6 +1,7 @@
 import os
 import pickle
 import httpx
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -30,3 +31,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+BASE_DIR = Path(__file__).resolve().parents[2]
+MODELS_DIR = BASE_DIR / "models"
+
+DF_PATH = MODELS_DIR / "movie_df.pkl"
+TFIDF_PATH = MODELS_DIR / "tfidf.pkl"
+TFIDF_MATRIX_PATH = MODELS_DIR / "tfidf_matrix.pkl"
+INDICES_PATH = MODELS_DIR / "indices.pkl"

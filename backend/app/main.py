@@ -47,7 +47,7 @@ df: Optional[pd.DataFrame] = None
 indices: Optional[pd.Series] = None
 tfidf: Optional[Any] = None
 tfidf_matrix: Optional[Any] = None
-
+client: Optional[httpx.AsyncClient] = None
 
 @app.on_event("startup")
 def startup_event():
@@ -56,8 +56,15 @@ def startup_event():
     indices = pd.read_pickle(INDICES_PATH)
     tfidf = pickle.load(open(TFIDF_PATH, "rb"))
     tfidf_matrix = pickle.load(open(TFIDF_MATRIX_PATH, "rb"))
+    
+    global client
+    client = httpx.AsyncClient()
+    
     return {"message": "Startup event completed"}
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    await client.aclose()
 
 @app.get("/")
 def health_check():

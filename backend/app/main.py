@@ -50,14 +50,13 @@ tfidf_matrix: Optional[Any] = None
 client: Optional[httpx.AsyncClient] = None
 
 @app.on_event("startup")
-def startup_event():
-    global df, indices, tfidf, tfidf_matrix
+async def startup_event():
+    global df, indices, tfidf, tfidf_matrix, client
     df = pd.read_pickle(DF_PATH)
     indices = pd.read_pickle(INDICES_PATH)
     tfidf = pickle.load(open(TFIDF_PATH, "rb"))
     tfidf_matrix = pickle.load(open(TFIDF_MATRIX_PATH, "rb"))
     
-    global client
     client = httpx.AsyncClient()
     
     return {"message": "Startup event completed"}

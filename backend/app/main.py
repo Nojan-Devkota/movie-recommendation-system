@@ -1,28 +1,19 @@
-from utils.tmdb_client import tmdb_cards_from_results
-from schema.schema import MovieCard
-import os
 import pickle
+from pathlib import Path
+from typing import Any, List, Optional
+
 import httpx
 import pandas as pd
-from pathlib import Path
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from typing import List, Optional, Any
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi import HTTPException
+
+from schema.schema import MovieCard, TFIDFRecommendations
+from utils.tmdb_client import tmdb_cards_from_results, tmdb_get
 from utils.util_functions import tfidf_movie_recommendations
-from schema.schema import TFIDFRecommendations
-from utils.tmdb_client import tmdb_get
 
 load_dotenv()
-TMDB_API_KEY = os.getenv("TMDB_API_KEY")
-TMDB_BASE_URL = "https://api.themoviedb.org/3"
-TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
-
-
-if not TMDB_API_KEY:
-    raise ValueError("TMDB_API_KEY is not set")
 
 app = FastAPI(
     title="Movie Recommendation System",
@@ -68,7 +59,8 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    await client.aclose()
+    if client is not None:
+        await client.aclose()
 
 
 @app.get("/")
@@ -78,36 +70,33 @@ def health_check():
 
 @app.get("/home", response_model=List[MovieCard])
 async def home(
-    client: httpx.AsyncClient,
-    category: str = Query(..., min_length=1),
+    category: str = Query("popular"),
     limit: int = Query(24, ge=1, le=100),
 ) -> List[MovieCard]:
+    if client is None:
+        raise HTTPException(status_code=500, detail="HTTP client not initialized")
 
     try:
         if category == "trending":
             data = await tmdb_get(
-                path="trending/movie/week",
-                params={
-                    "language": "en-US",
-                },
+                path="trending/movie/day",
+                params={"language": "en-US"},
                 client=client,
             )
-
             return tmdb_cards_from_results(data.get("results", []), limit=limit)
 
         if category not in ["popular", "top_rated", "upcoming", "now_playing"]:
             raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
 
         data = await tmdb_get(
-            path=f"/movie/{category}",
-            params={
-                "language": "en-US",
-            },
+            path=f"movie/{category}",
+            params={"language": "en-US", "page": 1},
             client=client,
         )
+        return tmdb_cards_from_results(data.get("results", []), limit=limit)
 
-    except HTTPException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,

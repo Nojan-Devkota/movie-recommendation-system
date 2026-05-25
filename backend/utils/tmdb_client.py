@@ -1,8 +1,19 @@
-from app.main import TMDB_API_KEY, TMDB_BASE_URL, TMDB_IMAGE_BASE_URL
+import os
+from typing import Any, Dict, List, Optional
+
 import httpx
+from dotenv import load_dotenv
 from fastapi import HTTPException
+
 from schema.schema import MovieCard, MovieDetails
-from typing import Optional, Dict, Any, List
+
+load_dotenv()
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+TMDB_BASE_URL = "https://api.themoviedb.org/3"
+TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
+
+if not TMDB_API_KEY:
+    raise ValueError("TMDB_API_KEY is not set")
 
 
 def make_img_url(path: str) -> str:
@@ -82,12 +93,13 @@ async def tmdb_search(
     page: int = 1
 ) -> Dict[str, Any]:
     data = await tmdb_get(
-        path = "search/movie",
-        client = client,
-        params = {
+        path="search/movie",
+        client=client,
+        params={
+            "query": query,
             "language": "en-US",
             "page": page,
-        }
+        },
     )
     
     return data
